@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Sebaran Lembaga Pendidikan Yogyakarta</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            width: 100%;
+            height: 65vh;
+        }
+        #table-container {
+            width: 100%;
+            height: 35vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+            border-top: 3px solid #2c3e50;
+            background: #ffffff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        thead th {
+            position: sticky;
+            top: 0;
+            background-color: #2c3e50;
+            color: #ffffff;
+            padding: 8px 10px;
+            text-align: left;
+            z-index: 1;
+        }
+        tbody td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        tbody tr:hover {
+            background-color: #eef6ff;
+            cursor: pointer;
+        }
+        .legend {
+            background: #ffffff;
+            padding: 10px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .legend-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div id="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nama</th>
+                    <th>Jenjang</th>
+                    <th>Status</th>
+                    <th>Kecamatan</th>
+                    <th>Kelurahan</th>
+                    <th>Alamat</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                </tr>
+            </thead>
+            <tbody id="tabel-lembaga"></tbody>
+        </table>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([-7.795, 110.375], 13);
+
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        var lembagaWMS = L.tileLayer.wms("http://localhost:8080/geoserver/pgweb/wms", {
+            layers: 'pgweb:sekolah_kusus',
+            format: 'image/png',
+            transparent: true,
+            version: '1.1.1'
+        });
+
+        var lembagaMarkerLayer = L.layerGroup().addTo(map);
+
+        var warnaJenjang = {
+            "Kursus": "#3388ff",
+            "PKBM": "#ff7800",
+            "Pondok Pesantren": "#2ca25f",
+            "SKB": "#d62728"
+        };
+        var singkatanJenjang = {
+            "Kursus": "KR",
+            "PKBM": "PK",
+            "Pondok Pesantren": "PP",
+            "SKB": "SK"
+        };
+
+        // Data dari tabel lembaga
+        var dataLembaga = {
+            "type": "FeatureCollection",
+            "features": [
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.3614000, -7.7783000] }, "properties": { "id": 1, "nama": "Jogja English Training Centre", "jenjang": "Kursus", "status": "SWASTA", "kecamatan": "Tegalrejo", "kelurahan": "Karangwaru", "alamat": "Jl. Wolter Monginsidi No.38", "latitude": -7.7783000, "longitude": 110.3614000 } },
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.3764000, -7.7863000] }, "properties": { "id": 2, "nama": "LKP Dian Gitaya", "jenjang": "Kursus", "status": "SWASTA", "kecamatan": "Gondokusuman", "kelurahan": "Kotabaru", "alamat": "Jl. Juwadi 8 Kota Baru, Yogyakarta", "latitude": -7.7863000, "longitude": 110.3764000 } },
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.3761000, -7.8146000] }, "properties": { "id": 3, "nama": "PKBM Pelangi Abadi Nusantara", "jenjang": "PKBM", "status": "SWASTA", "kecamatan": "Mergangsan", "kelurahan": "Wirogunan", "alamat": "Jl. Tamansiswa No. 160", "latitude": -7.8146000, "longitude": 110.3761000 } },
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.3975000, -7.8148000] }, "properties": { "id": 4, "nama": "LKP Mitra Adisty", "jenjang": "Kursus", "status": "SWASTA", "kecamatan": "Kotagede", "kelurahan": "Rejowinangun", "alamat": "JL. Depokan II RT 33 RW 10", "latitude": -7.8148000, "longitude": 110.3975000 } },
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.3719000, -7.8251000] }, "properties": { "id": 5, "nama": "Harun Asy-Syafi'i", "jenjang": "Pondok Pesantren", "status": "SWASTA", "kecamatan": "Mergangsan", "kelurahan": "Brontokusuman", "alamat": "Karangkajen MG III/1014 RT.055 RW. 015", "latitude": -7.8251000, "longitude": 110.3719000 } },
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.3548000, -7.7689800] }, "properties": { "id": 6, "nama": "LKP Xinlong Mandarin Education Center", "jenjang": "Kursus", "status": "SWASTA", "kecamatan": "Jetis", "kelurahan": "Cokrodiningratan", "alamat": "Jl. Pakuningratan No. 32", "latitude": -7.7689800, "longitude": 110.3548000 } },
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.3965000, -7.7812000] }, "properties": { "id": 7, "nama": "PKBM Reksonegaran", "jenjang": "PKBM", "status": "SWASTA", "kecamatan": "Gondokusuman", "kelurahan": "Klitren", "alamat": "Klitren Lor GK.3 No 531", "latitude": -7.7812000, "longitude": 110.3965000 } },
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.3537000, -7.8124100] }, "properties": { "id": 8, "nama": "LKP Lembaga Indonesia Jerman", "jenjang": "Kursus", "status": "SWASTA", "kecamatan": "Mantrijeron", "kelurahan": "Gedongkiwo", "alamat": "Sugeng Jeroni No. 619/MJ I RT 035 RW 008", "latitude": -7.8124100, "longitude": 110.3537000 } },
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.3785068, -7.7969624] }, "properties": { "id": 9, "nama": "SPNF SKB KOTA YOGYAKARTA", "jenjang": "SKB", "status": "NEGERI", "kecamatan": "Gondokusuman", "kelurahan": "Baciro", "alamat": "Jl. Bung Tarjo No.9A, Baciro, Kec. Gondokusuman", "latitude": -7.7969624, "longitude": 110.3785068 } },
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.2478000, -7.7774000] }, "properties": { "id": 12, "nama": "LKP Xinlong Mandarin Education Center", "jenjang": "Kursus", "status": "SWASTA", "kecamatan": "Gondokusuman", "kelurahan": "Brontokusuman", "alamat": "JL. Depokan II RT 33 RW 10", "latitude": -7.7774000, "longitude": 110.2478000 } },
+                { "type": "Feature", "geometry": { "type": "Point", "coordinates": [110.2478000, -7.7774000] }, "properties": { "id": 13, "nama": "LKP Xinlong Mandarin Education Center", "jenjang": "Kursus", "status": "SWASTA", "kecamatan": "Gondokusuman", "kelurahan": "Brontokusuman", "alamat": "JL. Depokan II RT 33 RW 10", "latitude": -7.7774000, "longitude": 110.2478000 } }
+            ]
+        };
+
+        function buatPinIcon(warna, singkatan) {
+            var svg =
+                '<svg width="32" height="42" viewBox="0 0 32 42" xmlns="http://www.w3.org/2000/svg">' +
+                    '<path d="M16 0C7.16 0 0 7.16 0 16c0 12 16 26 16 26s16-14 16-26C32 7.16 24.84 0 16 0z" fill="' + warna + '" stroke="#ffffff" stroke-width="2"/>' +
+                    '<circle cx="16" cy="15" r="10" fill="rgba(0,0,0,0.2)"/>' +
+                    '<text x="16" y="19" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="10" font-weight="bold">' + singkatan + '</text>' +
+                '</svg>';
+
+            return L.divIcon({
+                className: "",
+                html: svg,
+                iconSize: [32, 42],
+                iconAnchor: [16, 42],
+                popupAnchor: [0, -40]
+            });
+        }
+
+        function tampilkanDataKePetaDanTabel(geojsonData) {
+            lembagaMarkerLayer.clearLayers();
+            var tbody = document.getElementById("tabel-lembaga");
+            tbody.innerHTML = "";
+
+            var geoJsonLayer = L.geoJSON(geojsonData, {
+                pointToLayer: function (feature, latlng) {
+                    var jenjang = (feature.properties.jenjang || "").trim();
+                    var warna = warnaJenjang[jenjang] || "#7f7f7f";
+                    var singkatan = singkatanJenjang[jenjang] || "?";
+
+                    var marker = L.marker(latlng, {
+                        icon: buatPinIcon(warna, singkatan)
+                    });
+                    marker.bindTooltip(jenjang || "Lainnya", {
+                        permanent: false,
+                        direction: "top",
+                        offset: [0, -38]
+                    });
+                    return marker;
+                },
+                onEachFeature: function (feature, layer) {
+                    var p = feature.properties;
+                    var coords = feature.geometry ? feature.geometry.coordinates : [0, 0];
+
+                    var id = p.id || "-";
+                    var nama = p.nama || "-";
+                    var jenjang = p.jenjang || "-";
+                    var status = p.status || "-";
+                    var kecamatan = p.kecamatan || "-";
+                    var kelurahan = p.kelurahan || "-";
+                    var alamat = p.alamat || "-";
+                    var lat = p.latitude !== undefined ? p.latitude : coords[1];
+                    var lng = p.longitude !== undefined ? p.longitude : coords[0];
+
+                    layer.bindPopup(
+                        "<b>" + nama + "</b><br>" +
+                        "Jenjang: " + jenjang + " (" + status + ")<br>" +
+                        "Alamat: " + alamat + ", Kel. " + kelurahan + ", Kec. " + kecamatan
+                    );
+
+                    var tr = document.createElement("tr");
+                    tr.innerHTML =
+                        "<td>" + id + "</td>" +
+                        "<td><b>" + nama + "</b></td>" +
+                        "<td>" + jenjang + "</td>" +
+                        "<td>" + status + "</td>" +
+                        "<td>" + kecamatan + "</td>" +
+                        "<td>" + kelurahan + "</td>" +
+                        "<td>" + alamat + "</td>" +
+                        "<td>" + lat + "</td>" +
+                        "<td>" + lng + "</td>";
+
+                    tr.addEventListener("click", function () {
+                        map.setView(layer.getLatLng(), 16);
+                        layer.openPopup();
+                    });
+
+                    tbody.appendChild(tr);
+                }
+            }).addTo(lembagaMarkerLayer);
+
+            if (geojsonData.features && geojsonData.features.length > 0) {
+                map.fitBounds(geoJsonLayer.getBounds(), { padding: [30, 30] });
+            }
+        }
+
+        // Langsung tampilkan marker & tabel seketika saat halaman dibuka
+        tampilkanDataKePetaDanTabel(dataLembaga);
+
+        // Perbarui otomatis dari WFS GeoServer jika aktif dan memiliki fitur
+        var wfsUrl = "http://localhost:8080/geoserver/pgweb/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=pgweb%3Asekolah_kusus&outputFormat=application%2Fjson";
+        fetch(wfsUrl)
+            .then(function (response) {
+                if (!response.ok) throw new Error("HTTP " + response.status);
+                return response.json();
+            })
+            .then(function (data) {
+                if (data && data.features && data.features.length > 0) {
+                    tampilkanDataKePetaDanTabel(data);
+                }
+            })
+            .catch(function () {});
+
+        // Kontrol Layer
+        var baseMaps = {
+            "OpenStreetMap": osm
+        };
+        var overlayMaps = {
+            "Marker Lembaga (Pin)": lembagaMarkerLayer,
+            "Layer WMS GeoServer": lembagaWMS
+        };
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+        // Legenda di pojok kanan bawah
+        var legend = L.control({ position: "bottomright" });
+        legend.onAdd = function () {
+            var div = L.DomUtil.create("div", "legend");
+            div.setAttribute("translate", "no");
+            div.innerHTML =
+                "<b>Jenjang Pendidikan</b>" +
+                '<div class="legend-item"><span class="legend-badge" style="background:#3388ff">KR</span> Kursus</div>' +
+                '<div class="legend-item"><span class="legend-badge" style="background:#ff7800">PK</span> PKBM</div>' +
+                '<div class="legend-item"><span class="legend-badge" style="background:#2ca25f">PP</span> Pondok Pesantren</div>' +
+                '<div class="legend-item"><span class="legend-badge" style="background:#d62728">SK</span> SKB</div>' +
+                '<div class="legend-item"><span class="legend-badge" style="background:#7f7f7f">?</span> Lainnya</div>';
+            return div;
+        };
+        legend.addTo(map);
+    </script>
+
+</body>
+</html>
